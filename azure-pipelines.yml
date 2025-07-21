@@ -10,7 +10,7 @@ pool:
   name: 'pcso-dev'
 
 variables:
-  buildConfiguration: 'Release'
+  buildConfiguration: 'dev'
 
 steps:
 - script: dotnet build --configuration $(buildConfiguration)
