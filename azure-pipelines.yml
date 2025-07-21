@@ -22,8 +22,9 @@ pool:
 variables:
   buildConfiguration: 'Release'
   # The path to the project file from the sample repo
-  projectPath: 'pipelines-dotnet-core.csproj'
+  projectPath: 'aspnetcore-webapp.csproj'
 
+stages:
 - stage: Build
   displayName: 'Build Stage'
   jobs:
@@ -31,7 +32,7 @@ variables:
     pool:
       name: 'pcso-dev'
     steps:
-    # This line downloads the code so the build task can find it
+    # ADD THIS LINE to download your source code first
     - checkout: self
 
     - task: DotNetCoreCLI@2
@@ -40,6 +41,15 @@ variables:
         command: 'build'
         projects: '$(projectPath)'
         arguments: '--configuration $(buildConfiguration)'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Project'
+      inputs:
+        command: 'publish'
+        publishWebProjects: false
+        projects: '$(projectPath)'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+        zipAfterPublish: true
 
     # # This task was missing from your YAML but is needed for the deploy stage
     # - task: PublishBuildArtifacts@1
