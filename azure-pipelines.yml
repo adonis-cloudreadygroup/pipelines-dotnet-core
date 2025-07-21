@@ -27,17 +27,19 @@ variables:
 stages:
 - stage: Build
   displayName: 'Build Stage'
-  # This job will run on your self-hosted agent pool
   jobs:
   - job: BuildJob
     pool:
       name: 'pcso-dev'
     steps:
+    # ADD THIS LINE to download your source code first
+    - checkout: self
+
     - task: DotNetCoreCLI@2
       displayName: 'Build Project'
       inputs:
         command: 'build'
-        projects: $(projectPath)
+        projects: '$(projectPath)'
         arguments: '--configuration $(buildConfiguration)'
 
     - task: DotNetCoreCLI@2
@@ -45,13 +47,14 @@ stages:
       inputs:
         command: 'publish'
         publishWebProjects: false
-        projects: $(projectPath)
+        projects: '$(projectPath)'
         arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
         zipAfterPublish: true
 
-    # - task: PublishBuildArtifacts@1
-    #   displayName: 'Publish Artifact'
-    #   inputs:
-    #     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    #     ArtifactName: 'webapp'
-    #     publishLocation: 'Container'
+    # This task was missing from your YAML but is needed for the deploy stage
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'webapp'
+        publishLocation: 'Container'
