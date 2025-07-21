@@ -92,7 +92,7 @@ stages:
               script: |
                 # Corrected path to the zip file, using the project name
                 $sourceZip = '$(System.ArtifactsDirectory)/webapp/pipelines-dotnet-core.zip'
-                $destination = '$(Agent.ToolsDirectory)/webapp'
+                $destination = 'C:\inetpub\webapp'
 
                 # Unzip the application files
                 Expand-Archive -Path $sourceZip -DestinationPath $destination -Force
