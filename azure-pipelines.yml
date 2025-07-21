@@ -9,9 +9,49 @@ trigger:
 pool:
   name: 'pcso-dev'
 
-variables:
-  buildConfiguration: 'dev'
+# variables:
+#   buildConfiguration: 'dev'
 
-steps:
-- script: dotnet build --configuration $(buildConfiguration)
-  displayName: 'dotnet build $(buildConfiguration)'
+# steps:
+# - script: dotnet build --configuration $(buildConfiguration)
+#   displayName: 'dotnet build $(buildConfiguration)'
+# steps:
+# - task: DotNetCoreCLI@2
+
+
+variables:
+  buildConfiguration: 'Release'
+  # The path to the project file from the sample repo
+  projectPath: 'samples/aspnetcore-webapp/aspnetcore-webapp.csproj'
+
+stages:
+- stage: Build
+  displayName: 'Build Stage'
+  # This job will run on your self-hosted agent pool
+  jobs:
+  - job: BuildJob
+    pool:
+      name: 'pcso-dev'
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: 'Build Project'
+      inputs:
+        command: 'build'
+        projects: $(projectPath)
+        arguments: '--configuration $(buildConfiguration)'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Project'
+      inputs:
+        command: 'publish'
+        publishWebProjects: false
+        projects: $(projectPath)
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+        zipAfterPublish: true
+
+    # - task: PublishBuildArtifacts@1
+    #   displayName: 'Publish Artifact'
+    #   inputs:
+    #     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    #     ArtifactName: 'webapp'
+    #     publishLocation: 'Container'
