@@ -32,7 +32,6 @@ stages:
     pool:
       name: 'pcso-dev'
     steps:
-    # ADD THIS LINE to download your source code first
     - checkout: self
 
     - task: DotNetCoreCLI@2
@@ -51,10 +50,9 @@ stages:
         arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
         zipAfterPublish: true
 
-    # # This task was missing from your YAML but is needed for the deploy stage
-    # - task: PublishBuildArtifacts@1
-    #   displayName: 'Publish Artifact'
-    #   inputs:
-    #     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    #     ArtifactName: 'webapp'
-    #     publishLocation: 'Container'
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'webapp'
+        publishLocation: 'Container'
