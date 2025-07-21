@@ -77,20 +77,20 @@ stages:
       runOnce:
         deploy:
           steps:
-          - task: DownloadBuildArtifacts@0
+          # Use the modern and more reliable download task
+          - task: DownloadPipelineArtifact@2
             displayName: 'Download Artifact'
             inputs:
               buildType: 'current'
-              downloadType: 'single'
               artifactName: '$(artifactName)'
-              downloadPath: '$(System.ArtifactsDirectory)'
+              targetPath: '$(System.ArtifactsDirectory)'
 
           - task: PowerShell@2
             displayName: 'Deploy and Run Web App'
             inputs:
               targetType: 'inline'
               script: |
-                # Corrected path to use s.zip, which matches the artifact
+                # The download task places the zip file in a folder named after the artifact
                 $sourceZip = '$(System.ArtifactsDirectory)/$(artifactName)/s.zip'
                 $destination = '$(Agent.ToolsDirectory)/webapp'
 
