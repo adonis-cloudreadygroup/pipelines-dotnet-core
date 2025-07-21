@@ -22,7 +22,7 @@ pool:
 variables:
   buildConfiguration: 'Release'
   # The path to the project file from the sample repo
-  projectPath: 'aspnetcore-webapp.csproj'
+  projectPath: 'pipelines-dotnet-core.csproj'
 
 stages:
 - stage: Build
