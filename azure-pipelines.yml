@@ -82,7 +82,7 @@ stages:
             inputs:
               buildType: 'current'
               downloadType: 'single'
-              artifactName: 'webapp'
+              artifactName: '$(artifactName)'
               downloadPath: '$(System.ArtifactsDirectory)'
 
           - task: PowerShell@2
@@ -90,12 +90,12 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
-                # Corrected path to the zip file, using the project name
-                $sourceZip = '$(System.ArtifactsDirectory)/webapp/pipelines-dotnet-core.zip'
-                $destination = 'C:\inetpub\webapp'
+                # Corrected path to use s.zip, which matches the artifact
+                $sourceZip = '$(System.ArtifactsDirectory)/$(artifactName)/s.zip'
+                $destination = '$(Agent.ToolsDirectory)/webapp'
 
-                # Unzip the application files
+                Write-Host "Unzipping from $sourceZip to $destination..."
                 Expand-Archive -Path $sourceZip -DestinationPath $destination -Force
                 
-                # Run the web app as a background process
+                Write-Host "Starting the application..."
                 Start-Process -FilePath "dotnet" -ArgumentList "'$destination/pipelines-dotnet-core.dll'" -WindowStyle Hidden
