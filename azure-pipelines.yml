@@ -7,7 +7,7 @@ trigger:
 - master
 
 pool:
-  vmImage: pcso-dev
+  name: 'pcso-dev'
 
 variables:
   buildConfiguration: 'Release'
