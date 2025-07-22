@@ -19,6 +19,12 @@ stages:
     steps:
     - checkout: self
 
+    - task: UseDotNet@2
+      displayName: 'Use .NET 6.x'
+      inputs:
+        packageType: 'sdk'
+        version: '6.x'
+
     - task: DotNetCoreCLI@2
       displayName: 'Restore NuGet Packages'
       inputs:
