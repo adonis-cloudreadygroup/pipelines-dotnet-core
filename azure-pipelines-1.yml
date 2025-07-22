@@ -71,4 +71,22 @@ stages:
               downloadType: 'specific'
               downloadPath: '$(System.ArtifactsDirectory)'
               checkDownloadedFiles: true
-
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Define source and destination paths
+                $sourceZip = '$(System.ArtifactsDirectory)/drop/s.zip'
+                $destination = '$(Agent.ToolsDirectory)/drop'
+                
+                # Ensure the destination directory exists and is empty
+                if (Test-Path $destination) {
+                    Remove-Item -Path $destination -Recurse -Force
+                }
+                New-Item -ItemType Directory -Path $destination -Force
+                
+                # Unzip the application files
+                Expand-Archive -Path $sourceZip -DestinationPath $destination -Force
+                
+                # Run the web app as a background process
+                Start-Process -FilePath "dotnet" -ArgumentList "'$destination/pipelines-dotnet-core.dll'" -WindowStyle Hidden
