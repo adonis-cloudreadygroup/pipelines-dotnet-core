@@ -75,18 +75,58 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
-                # Define source and destination paths
+                # --- SCRIPT WITH DEBUGGING ---
+
+                Write-Host "--- Starting Debug ---"
+
+                # 1. Print the predefined variables to see what paths we're getting
+                Write-Host "System.ArtifactsDirectory = $(System.ArtifactsDirectory)"
+                Write-Host "Agent.ToolsDirectory = $(Agent.ToolsDirectory)"
+
+                # 2. List all the files that were downloaded from the artifact
+                Write-Host "Listing all downloaded files..."
+                Get-ChildItem -Path '$(System.ArtifactsDirectory)' -Recurse
+
+                # 3. Define our paths
                 $sourceZip = '$(System.ArtifactsDirectory)/drop/s.zip'
-                $destination = '$(Agent.ToolsDirectory)/drop'
-                
-                # Ensure the destination directory exists and is empty
-                if (Test-Path $destination) {
-                    Remove-Item -Path $destination -Recurse -Force
+                $destination = 'C:\apps\webapp'
+
+                Write-Host "Expecting to find ZIP file at: $sourceZip"
+                Write-Host "Will deploy to: $destination"
+
+                # 4. Check if the ZIP file exists before we try to use it
+                if (-not (Test-Path $sourceZip)) {
+                    Write-Host "##[error]FATAL: The source ZIP file was not found at the expected path."
+                    exit 1
                 }
-                New-Item -ItemType Directory -Path $destination -Force
-                
-                # Unzip the application files
-                Expand-Archive -Path $sourceZip -DestinationPath $destination -Force
-                
-                # Run the web app as a background process
-                Start-Process -FilePath "dotnet" -ArgumentList "'$destination/pipelines-dotnet-core.dll'" -WindowStyle Hidden
+
+                Write-Host "SUCCESS: Source ZIP file found. Proceeding with deployment."
+
+                # --- MAIN DEPLOYMENT LOGIC ---
+                try {
+                    # Deploy the Files
+                    if (Test-Path $destination) {
+                        Remove-Item -Path $destination -Recurse -Force
+                    }
+                    New-Item -ItemType Directory -Path $destination -Force
+                    Expand-Archive -Path $sourceZip -DestinationPath $destination -Force
+                    Write-Host "Files unzipped successfully."
+
+                    # Create a Scheduled Task
+                    $dllPath = "$destination\pipelines-dotnet-core.dll"
+                    $taskName = "MyWebApp"
+                    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+                    $action = New-ScheduledTaskAction -Execute "dotnet.exe" -Argument $dllPath -WorkingDirectory $destination
+                    $trigger = New-ScheduledTaskTrigger -AtStartup
+                    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -User "SYSTEM"
+                    Write-Host "Scheduled task '$taskName' created."
+
+                    # Start the task
+                    Start-ScheduledTask -TaskName $taskName
+                    Write-Host "Task '$taskName' started."
+                }
+                catch {
+                    Write-Host "##[error]An error occurred during the main deployment logic:"
+                    Write-Host $_.Exception.Message
+                    exit 1
+                }
