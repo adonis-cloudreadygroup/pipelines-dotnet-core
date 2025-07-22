@@ -82,7 +82,7 @@ stages:
             displayName: 'Download Artifact'
             inputs:
               buildType: 'current'
-              artifactName: '$(artifactName)'
+              artifactName: 'webapp'
               targetPath: '$(System.ArtifactsDirectory)'
 
           - task: PowerShell@2
