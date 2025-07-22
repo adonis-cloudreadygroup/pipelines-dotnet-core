@@ -81,7 +81,7 @@ stages:
       condition: succeededOrFailed()
       inputs:
         testRunner: 'VSTest'
-        testResultsFiles: '**/*.trx'
+        testResultsFiles: '**/TestResults/*.trx'
 
 #
 # STAGE 3: Deploy the application
