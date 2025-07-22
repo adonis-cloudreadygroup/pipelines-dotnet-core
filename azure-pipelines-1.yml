@@ -83,14 +83,13 @@ stages:
                 # 1. Define Names and Paths
                 $sourceZip = '$(System.ArtifactsDirectory)/drop/s.zip'
                 $destination = 'C:\inetpub\MyWebApp'
-                $appPoolName = 'MyWebAppPool'
+                $appPoolName = 'MyWebAppPool' # The name of the App Pool you created in IIS
 
-                # 2. Stop the Application Pool
+                # 2. Stop the Application Pool to unlock files
                 Write-Host "Stopping application pool: $appPoolName"
-                # Add -ErrorAction SilentlyContinue to ignore the "already stopped" error
-                Stop-WebAppPool -Name $appPoolName -ErrorAction SilentlyContinue
+                Stop-WebAppPool -Name $appPoolName
 
-                # Add a delay to allow the worker process to shut down
+                # Add a delay to allow the worker process to shut down completely
                 Write-Host "Waiting for 2 seconds..."
                 Start-Sleep -Seconds 2
 
