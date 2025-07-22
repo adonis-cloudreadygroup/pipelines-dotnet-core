@@ -23,3 +23,12 @@ steps:
     publishLocation: 'Container'
     StoreAsTar: true
 
+- task: DownloadBuildArtifacts@1
+  inputs:
+    buildType: 'specific'
+    project: '91ed0a8d-d946-4858-b4fd-0a8788e6f3c6'
+    pipeline: '2'
+    specificBuildWithTriggering: true
+    buildVersionToDownload: 'latest'
+    downloadType: 'specific'
+    downloadPath: '$(System.ArtifactsDirectory)'
