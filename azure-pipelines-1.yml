@@ -51,11 +51,10 @@ stages:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)'
         ArtifactName: 'drop'
         publishLocation: 'Container'
-        StoreAsTar: true
 
 # --- ADD THIS DEPLOYMENT STAGE ---
 - stage: Deploy
-  displayName: 'Deploy to Dev Environment'
+  displayName: 'Deploy Stage'
   dependsOn: Build
   jobs:
   - deployment: DeployToVM
@@ -84,7 +83,7 @@ stages:
               targetType: 'inline'
               script: |
                 # Unzip the application files
-                Expand-Archive -Path '$(System.ArtifactsDirectory)/webapp/$(Build.BuildId).zip' -DestinationPath '$(Agent.ToolsDirectory)/webapp' -Force
-                
+                Expand-Archive -Path '$(System.ArtifactsDirectory)/drop/$(Build.BuildId).zip' -DestinationPath '$(Agent.ToolsDirectory)/drop' -Force
+
                 # Run the web app as a background process
-                Start-Process -FilePath "dotnet" -ArgumentList "'$(Agent.ToolsDirectory)/webapp/pipelines-dotnet-core.dll'" -WindowStyle Hidden
+                Start-Process -FilePath "dotnet" -ArgumentList "'$(Agent.ToolsDirectory)/drop/pipelines-dotnet-core.dll'" -WindowStyle Hidden
