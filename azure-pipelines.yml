@@ -4,26 +4,14 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
 
 trigger:
-- master
+- azure-pipelines
 
 pool:
-  name: 'pcso-dev'
-
-# variables:
-#   buildConfiguration: 'dev'
-
-# steps:
-# - script: dotnet build --configuration $(buildConfiguration)
-#   displayName: 'dotnet build $(buildConfiguration)'
-# steps:
-# - task: DotNetCoreCLI@2
-
+  vmImage: ubuntu-latest
 
 variables:
   buildConfiguration: 'Release'
-  # The path to the project file from the sample repo
   projectPath: 'pipelines-dotnet-core.csproj'
-
 stages:
 # Define the pipeline stages - Build stage is responsible for building and packaging the application
 - stage: Build
@@ -58,14 +46,14 @@ stages:
 
     # Publish the build artifacts so they can be used by the deployment stage
     - task: PublishBuildArtifacts@1
-      displayName: 'Publish Artifact'
       inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'  # Path containing files to publish
-        ArtifactName: 'webapp'                              # Name of the artifact to create
-        publishLocation: 'Container'                        # Publish to pipeline artifact storage
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
 
+# --- ADD THIS DEPLOYMENT STAGE ---
 - stage: Deploy
-  displayName: 'Deploy to Dev Environment'
+  displayName: 'Deploy Stage'
   dependsOn: Build
   jobs:
   - deployment: DeployToVM
@@ -77,25 +65,41 @@ stages:
       runOnce:
         deploy:
           steps:
-          # Use the modern and more reliable download task
-          - task: DownloadPipelineArtifact@2
-            displayName: 'Download Artifact'
+          - task: DownloadBuildArtifacts@1
             inputs:
               buildType: 'current'
-              artifactName: 'webapp'
-              targetPath: '$(System.ArtifactsDirectory)'
-
+              downloadType: 'specific'
+              downloadPath: '$(System.ArtifactsDirectory)'
+              checkDownloadedFiles: true
           - task: PowerShell@2
-            displayName: 'Deploy and Run Web App'
             inputs:
               targetType: 'inline'
               script: |
-                # The download task places the zip file in a folder named after the artifact
-                $sourceZip = '$(System.ArtifactsDirectory)/webapp/pipelines-dotnet-core.zip'
-                $destination = '$(Agent.ToolsDirectory)/webapp'
+                # 1. Define Names and Paths
+                $sourceZip = '$(System.ArtifactsDirectory)/drop/s.zip'
+                $destination = 'C:\inetpub\MyWebApp'
+                $appPoolName = 'MyWebApp' # The name of the App Pool you created in IIS
 
-                Write-Host "Unzipping from $sourceZip to $destination..."
+                # 2. Stop the Application Pool to unlock files
+                Write-Host "Stopping application pool: $appPoolName"
+                Stop-WebAppPool -Name $appPoolName
+
+
+                # Add a delay to allow the worker process to shut down completely
+                Write-Host "Waiting for 2 seconds..."
+                Start-Sleep -Seconds 2
+
+                # 3. Deploy the Files
+                Write-Host "Clearing destination folder: $destination"
+                if (Test-Path ($destination + "\*")) {
+                    Remove-Item -Path ($destination + "\*") -Recurse -Force
+                }
+
+                Write-Host "Unzipping application files..."
                 Expand-Archive -Path $sourceZip -DestinationPath $destination -Force
-                
-                Write-Host "Starting the application..."
-                Start-Process -FilePath "dotnet" -ArgumentList "'$destination/pipelines-dotnet-core.dll'" -WindowStyle Hidden
+
+                # 4. Start the Application Pool
+                Write-Host "Starting application pool: $appPoolName"
+                Start-WebAppPool -Name $appPoolName
+
+                Write-Host "Deployment to IIS site is complete."

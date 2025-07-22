@@ -1,60 +1,74 @@
-# ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
 trigger:
 - azure-pipelines
-
-pool:
-  vmImage: ubuntu-latest
 
 variables:
   buildConfiguration: 'Release'
   projectPath: 'pipelines-dotnet-core.csproj'
+  artifactName: 'drop'
+
 stages:
-# Define the pipeline stages - Build stage is responsible for building and packaging the application
+#
+# STAGE 1: Build the application
+#
 - stage: Build
   displayName: 'Build Stage'
   jobs:
-  # A job represents a series of steps that run on the same agent
   - job: BuildJob
     pool:
-      # Using the self-hosted agent pool named 'pcso-dev'
       name: 'pcso-dev'
     steps:
-    # Explicitly checkout the repository code to the agent
     - checkout: self
-
-    # Build the .NET Core project using the DotNetCoreCLI task
     - task: DotNetCoreCLI@2
       displayName: 'Build Project'
       inputs:
-        command: 'build'             # Use the build command
-        projects: '$(projectPath)'    # Project file to build (defined in variables)
-        arguments: '--configuration $(buildConfiguration)'  # Build configuration (Release)
-
-    # Publish the project to prepare it for deployment
+        command: 'build'
+        projects: '$(projectPath)'
+        arguments: '--configuration $(buildConfiguration)'
     - task: DotNetCoreCLI@2
       displayName: 'Publish Project'
       inputs:
-        command: 'publish'           # Use the publish command
-        publishWebProjects: false    # Only publish specified projects, not all web projects
-        projects: '$(projectPath)'    # Project file to publish
-        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'  # Output to staging directory
-        zipAfterPublish: true        # Create a zip file after publishing
-
-    # Publish the build artifacts so they can be used by the deployment stage
+        command: 'publish'
+        publishWebProjects: false
+        projects: '$(projectPath)'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+        zipAfterPublish: true
     - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'drop'
+        ArtifactName: '$(artifactName)'
         publishLocation: 'Container'
 
-# --- ADD THIS DEPLOYMENT STAGE ---
+#
+# STAGE 2: Run unit tests
+#
+- stage: Test
+  displayName: 'Test Stage'
+  dependsOn: Build
+  jobs:
+  - job: TestJob
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: 'Run Unit Tests'
+      inputs:
+        command: 'test'
+        projects: '**/*Tests/*.csproj'
+        arguments: '--configuration $(buildConfiguration)'
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results'
+      condition: succeededOrFailed()
+      inputs:
+        testRunner: 'VSTest'
+        testResultsFiles: '**/*.trx'
+
+#
+# STAGE 3: Deploy the application
+#
 - stage: Deploy
   displayName: 'Deploy Stage'
-  dependsOn: Build
+  dependsOn: Test
   jobs:
   - deployment: DeployToVM
     displayName: 'Deploy to EC2 Instance'
@@ -69,27 +83,23 @@ stages:
             inputs:
               buildType: 'current'
               downloadType: 'specific'
+              artifactName: '$(artifactName)'
               downloadPath: '$(System.ArtifactsDirectory)'
               checkDownloadedFiles: true
           - task: PowerShell@2
             inputs:
               targetType: 'inline'
               script: |
-                # 1. Define Names and Paths
-                $sourceZip = '$(System.ArtifactsDirectory)/drop/s.zip'
+                $sourceZip = '$(System.ArtifactsDirectory)/$(artifactName)/s.zip'
                 $destination = 'C:\inetpub\MyWebApp'
-                $appPoolName = 'MyWebApp' # The name of the App Pool you created in IIS
+                $appPoolName = 'MyWebApp'
 
-                # 2. Stop the Application Pool to unlock files
                 Write-Host "Stopping application pool: $appPoolName"
-                Stop-WebAppPool -Name $appPoolName
+                Stop-WebAppPool -Name $appPoolName -ErrorAction SilentlyContinue
 
-
-                # Add a delay to allow the worker process to shut down completely
                 Write-Host "Waiting for 2 seconds..."
                 Start-Sleep -Seconds 2
 
-                # 3. Deploy the Files
                 Write-Host "Clearing destination folder: $destination"
                 if (Test-Path ($destination + "\*")) {
                     Remove-Item -Path ($destination + "\*") -Recurse -Force
@@ -98,7 +108,6 @@ stages:
                 Write-Host "Unzipping application files..."
                 Expand-Archive -Path $sourceZip -DestinationPath $destination -Force
 
-                # 4. Start the Application Pool
                 Write-Host "Starting application pool: $appPoolName"
                 Start-WebAppPool -Name $appPoolName
 
