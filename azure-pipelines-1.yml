@@ -84,6 +84,10 @@ stages:
                 Write-Host "Stopping application pool: $appPoolName"
                 Stop-WebAppPool -Name $appPoolName
 
+                # Add a delay to allow the worker process to shut down completely
+                Write-Host "Waiting for 2 seconds..."
+                Start-Sleep -Seconds 2
+
                 # 3. Deploy the Files
                 Write-Host "Clearing destination folder: $destination"
                 if (Test-Path ($destination + "\*")) {
