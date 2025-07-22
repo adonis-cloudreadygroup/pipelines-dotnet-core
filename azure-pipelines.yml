@@ -91,7 +91,7 @@ stages:
               targetType: 'inline'
               script: |
                 # The download task places the zip file in a folder named after the artifact
-                $sourceZip = '$(System.ArtifactsDirectory)/webapp/s.zip'
+                $sourceZip = '$(System.ArtifactsDirectory)/webapp/pipelines-dotnet-core.zip'
                 $destination = '$(Agent.ToolsDirectory)/webapp'
 
                 Write-Host "Unzipping from $sourceZip to $destination..."
