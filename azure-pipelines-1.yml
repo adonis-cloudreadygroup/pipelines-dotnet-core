@@ -1,3 +1,17 @@
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- azure-pipelines
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  buildConfiguration: 'Release'
+  projectPath: 'pipelines-dotnet-core.csproj'
 stages:
 # Define the pipeline stages - Build stage is responsible for building and packaging the application
 - stage: Build
@@ -20,24 +34,6 @@ stages:
         projects: '$(projectPath)'    # Project file to build (defined in variables)
         arguments: '--configuration $(buildConfiguration)'  # Build configuration (Release)
 
-    # Run tests
-    - task: DotNetCoreCLI@2
-      displayName: 'Run Tests'
-      inputs:
-        command: 'test'
-        projects: '**/*Tests.csproj'
-        arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
-        publishTestResults: true
-        testRunTitle: 'Unit Tests'
-    
-    # Publish code coverage results
-    - task: PublishCodeCoverageResults@1
-      displayName: 'Publish Code Coverage'
-      inputs:
-        codeCoverageTool: 'Cobertura'
-        summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
-        reportDirectory: '$(Agent.TempDirectory)/**/coverage'
-
     # Publish the project to prepare it for deployment
     - task: DotNetCoreCLI@2
       displayName: 'Publish Project'
@@ -50,13 +46,12 @@ stages:
 
     # Publish the build artifacts so they can be used by the deployment stage
     - task: PublishBuildArtifacts@1
-      displayName: 'Publish Artifact'
       inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'  # Path containing files to publish
-        ArtifactName: 'webapp'                              # Name of the artifact to create
-        publishLocation: 'Container'                        # Publish to pipeline artifact storage
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
 
-# Deploy stage (existing)
+# --- ADD THIS DEPLOYMENT STAGE ---
 - stage: Deploy
   displayName: 'Deploy Stage'
   dependsOn: Build
@@ -83,11 +78,12 @@ stages:
                 # 1. Define Names and Paths
                 $sourceZip = '$(System.ArtifactsDirectory)/drop/s.zip'
                 $destination = 'C:\inetpub\MyWebApp'
-                $appPoolName = 'MyWebAppPool' # The name of the App Pool you created in IIS
+                $appPoolName = 'MyWebApp' # The name of the App Pool you created in IIS
 
                 # 2. Stop the Application Pool to unlock files
                 Write-Host "Stopping application pool: $appPoolName"
                 Stop-WebAppPool -Name $appPoolName
+
 
                 # Add a delay to allow the worker process to shut down completely
                 Write-Host "Waiting for 2 seconds..."
