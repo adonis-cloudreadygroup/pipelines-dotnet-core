@@ -62,12 +62,20 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
+    # Add this task to install and use the .NET 6 SDK
+    - task: UseDotNet@2
+      displayName: 'Use .NET 6.x'
+      inputs:
+        packageType: 'sdk'
+        version: '6.x'
+
     - task: DotNetCoreCLI@2
       displayName: 'Run Unit Tests'
       inputs:
         command: 'test'
         projects: '**/*Tests/*.csproj'
         arguments: '--configuration $(buildConfiguration)'
+
     - task: PublishTestResults@2
       displayName: 'Publish Test Results'
       condition: succeededOrFailed()
