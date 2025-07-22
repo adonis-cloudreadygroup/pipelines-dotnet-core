@@ -46,7 +46,6 @@ stages:
 
     # Publish the build artifacts so they can be used by the deployment stage
     - task: PublishBuildArtifacts@1
-      displayName: 'Publish Artifact'
       inputs:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)'
         ArtifactName: 'drop'
@@ -66,24 +65,10 @@ stages:
       runOnce:
         deploy:
           steps:
-          - task: DownloadBuildArtifacts@0
-            displayName: 'Download Artifact'
+          - task: DownloadBuildArtifacts@1
             inputs:
-              buildType: 'specific'
-              project: '91ed0a8d-d946-4858-b4fd-0a8788e6f3c6'
-              pipeline: '2'
-              specificBuildWithTriggering: true
-              buildVersionToDownload: 'latest'
+              buildType: 'current'
               downloadType: 'specific'
               downloadPath: '$(System.ArtifactsDirectory)'
+              checkDownloadedFiles: true
 
-          - task: PowerShell@2
-            displayName: 'Deploy and Run Web App'
-            inputs:
-              targetType: 'inline'
-              script: |
-                # Unzip the application files
-                Expand-Archive -Path '$(System.ArtifactsDirectory)/drop/$(Build.BuildId).zip' -DestinationPath '$(Agent.ToolsDirectory)/drop' -Force
-
-                # Run the web app as a background process
-                Start-Process -FilePath "dotnet" -ArgumentList "'$(Agent.ToolsDirectory)/drop/pipelines-dotnet-core.dll'" -WindowStyle Hidden
