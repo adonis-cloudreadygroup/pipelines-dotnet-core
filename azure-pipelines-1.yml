@@ -75,18 +75,26 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
-                # 1. Define Paths
+                # 1. Define Names and Paths
                 $sourceZip = '$(System.ArtifactsDirectory)/drop/s.zip'
-                # This is the physical path you set up in IIS
                 $destination = 'C:\inetpub\MyWebApp'
+                $appPoolName = 'MyWebAppPool' # The name of the App Pool you created in IIS
 
-                # 2. Deploy the Files
-                # Clear the destination folder first
+                # 2. Stop the Application Pool to unlock files
+                Write-Host "Stopping application pool: $appPoolName"
+                Stop-WebAppPool -Name $appPoolName
+
+                # 3. Deploy the Files
+                Write-Host "Clearing destination folder: $destination"
                 if (Test-Path ($destination + "\*")) {
                     Remove-Item -Path ($destination + "\*") -Recurse -Force
                 }
 
-                # Unzip the application files directly into the IIS site folder
+                Write-Host "Unzipping application files..."
                 Expand-Archive -Path $sourceZip -DestinationPath $destination -Force
 
-                Write-Host "Deployment to IIS site '$($destination)' is complete."
+                # 4. Start the Application Pool
+                Write-Host "Starting application pool: $appPoolName"
+                Start-WebAppPool -Name $appPoolName
+
+                Write-Host "Deployment to IIS site is complete."
