@@ -11,24 +11,80 @@ pool:
 
 variables:
   buildConfiguration: 'Release'
+  projectPath: 'pipelines-dotnet-core.csproj'
+stages:
+# Define the pipeline stages - Build stage is responsible for building and packaging the application
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  # A job represents a series of steps that run on the same agent
+  - job: BuildJob
+    pool:
+      # Using the self-hosted agent pool named 'pcso-dev'
+      name: 'pcso-dev'
+    steps:
+    # Explicitly checkout the repository code to the agent
+    - checkout: self
 
-steps:
-- script: dotnet build --configuration $(buildConfiguration)
-  displayName: 'dotnet build $(buildConfiguration)'
+    # Build the .NET Core project using the DotNetCoreCLI task
+    - task: DotNetCoreCLI@2
+      displayName: 'Build Project'
+      inputs:
+        command: 'build'             # Use the build command
+        projects: '$(projectPath)'    # Project file to build (defined in variables)
+        arguments: '--configuration $(buildConfiguration)'  # Build configuration (Release)
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-    ArtifactName: 'drop'
-    publishLocation: 'Container'
-    StoreAsTar: true
+    # Publish the project to prepare it for deployment
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Project'
+      inputs:
+        command: 'publish'           # Use the publish command
+        publishWebProjects: false    # Only publish specified projects, not all web projects
+        projects: '$(projectPath)'    # Project file to publish
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'  # Output to staging directory
+        zipAfterPublish: true        # Create a zip file after publishing
 
-- task: DownloadBuildArtifacts@1
-  inputs:
-    buildType: 'specific'
-    project: '91ed0a8d-d946-4858-b4fd-0a8788e6f3c6'
-    pipeline: '2'
-    specificBuildWithTriggering: true
-    buildVersionToDownload: 'latest'
-    downloadType: 'specific'
-    downloadPath: '$(System.ArtifactsDirectory)'
+    # Publish the build artifacts so they can be used by the deployment stage
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+        StoreAsTar: true
+
+# --- ADD THIS DEPLOYMENT STAGE ---
+- stage: Deploy
+  displayName: 'Deploy to Dev Environment'
+  dependsOn: Build
+  jobs:
+  - deployment: DeployToVM
+    displayName: 'Deploy to EC2 Instance'
+    environment:
+      name: 'dev'
+      resourceType: VirtualMachine
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: DownloadBuildArtifacts@0
+            displayName: 'Download Artifact'
+            inputs:
+              buildType: 'specific'
+              project: '91ed0a8d-d946-4858-b4fd-0a8788e6f3c6'
+              pipeline: '2'
+              specificBuildWithTriggering: true
+              buildVersionToDownload: 'latest'
+              downloadType: 'specific'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: PowerShell@2
+            displayName: 'Deploy and Run Web App'
+            inputs:
+              targetType: 'inline'
+              script: |
+                # Unzip the application files
+                Expand-Archive -Path '$(System.ArtifactsDirectory)/webapp/$(Build.BuildId).zip' -DestinationPath '$(Agent.ToolsDirectory)/webapp' -Force
+                
+                # Run the web app as a background process
+                Start-Process -FilePath "dotnet" -ArgumentList "'$(Agent.ToolsDirectory)/webapp/pipelines-dotnet-core.dll'" -WindowStyle Hidden
