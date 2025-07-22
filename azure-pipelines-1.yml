@@ -69,12 +69,18 @@ stages:
         version: '6.x'
 
     - task: DotNetCoreCLI@2
+      displayName: 'Restore packages for Test'
+      inputs:
+        command: 'restore'
+        projects: '**/*Tests/*.csproj'
+
+    - task: DotNetCoreCLI@2
       displayName: 'Run Unit Tests'
       inputs:
         command: 'test'
         projects: '**/*Tests/*.csproj'
         # Explicitly set the results directory
-        arguments: '--configuration $(buildConfiguration) --logger trx --results-directory "$(Agent.TempDirectory)/TestResults"'
+        arguments: '--configuration $(buildConfiguration) --logger trx --results-directory "$(System.DefaultWorkingDirectory)/TestResults"'
 
     - task: PublishTestResults@2
       displayName: 'Publish Test Results'
@@ -82,7 +88,7 @@ stages:
       inputs:
         testRunner: 'VSTest'
         # Point to the exact results directory
-        testResultsFiles: '$(Agent.TempDirectory)/TestResults/**/*.trx'
+        testResultsFiles: '$(System.DefaultWorkingDirectory)/TestResults/**/*.trx'
 
 #
 # STAGE 3: Deploy the application
