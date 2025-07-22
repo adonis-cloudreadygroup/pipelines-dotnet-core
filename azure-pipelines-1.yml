@@ -74,7 +74,7 @@ stages:
       inputs:
         command: 'test'
         projects: '**/*Tests/*.csproj'
-        arguments: '--configuration $(buildConfiguration)'
+        arguments: '--configuration $(buildConfiguration) --logger "trx;LogFileName=test-results.trx"'
 
     - task: PublishTestResults@2
       displayName: 'Publish Test Results'
