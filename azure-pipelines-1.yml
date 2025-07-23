@@ -80,15 +80,8 @@ stages:
         command: 'test'
         projects: '**/*Tests/*.csproj'
         # Explicitly set the results directory
-        arguments: '--configuration $(buildConfiguration) --logger trx --results-directory "$(System.DefaultWorkingDirectory)/TestResults"'
-
-    - task: PublishTestResults@2
-      displayName: 'Publish Test Results'
-      condition: succeededOrFailed()
-      inputs:
-        testRunner: 'VSTest'
-        # Point to the exact results directory
-        testResultsFiles: '$(System.DefaultWorkingDirectory)/TestResults/**/*.trx'
+        arguments: '--configuration $(buildConfiguration)'
+        publishTestResults: true
 
 #
 # STAGE 3: Deploy the application
